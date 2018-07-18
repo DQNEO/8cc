@@ -242,10 +242,10 @@ func make_struct_field_type(ctype *Ctype, name string, offset int) *Ctype {
 	return r
 }
 
-func make_struct_type(ctypes []*Ctype, tag string, size int) *Ctype {
+func make_struct_type(fields map[string]*Ctype, tag string, size int) *Ctype {
 	r := &Ctype{}
 	r.typ = CTYPE_STRUCT
-	r.fields = ctypes
+	r.fields = fields
 	r.tag = tag
 	r.size = size
 	return r
@@ -597,15 +597,6 @@ func read_cond_expr(cond *Ast) *Ast {
 	return ast_ternary(then.ctype, cond, then, els)
 }
 
-func find_struct_field(struc *Ast, name string) *Ctype {
-	for _, f := range struc.ctype.fields {
-		if f.name == name {
-			return f
-		}
-	}
-	return nil
-}
-
 func read_struct_field(struc *Ast) *Ast {
 	if struc.ctype.typ != CTYPE_STRUCT {
 		errorf("struct expected, but got %s", struc)
@@ -614,7 +605,7 @@ func read_struct_field(struc *Ast) *Ast {
 	if name.typ != TTYPE_IDENT {
 		errorf("field name expected, but got %s", name)
 	}
-	field := find_struct_field(struc, name.sval)
+	field := struc.ctype.fields[name.sval]
 	return ast_struct_ref(struc, field)
 }
 
@@ -762,15 +753,15 @@ func read_struct_union_tag() string {
 	}
 }
 
-func read_struct_union_fields() []*Ctype {
-	var r []*Ctype
+func read_struct_union_fields() map[string]*Ctype {
+	r := make(map[string]*Ctype)
 	expect('{')
 	for {
 		if !is_type_keyword(peek_token()) {
 			break
 		}
 		fieldtype, name := read_decl_int()
-		r = append(r, make_struct_field_type(fieldtype, name.sval, 0))
+		r[name.sval] = make_struct_field_type(fieldtype, name.sval, 0)
 		expect(';')
 	}
 	expect('}')
